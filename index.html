@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <h1>Guess the Word of the Day</h1>
+    </header>
+
+    <section class="play-area">
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+        <div class="inputBox"></div>
+    </section>
+
+    <section class="screen-keyboard">
+        <section class="screen-keyboard-row">
+            <button class="screen-key" value="q">q</button>
+            <button class="screen-key" value="w">w</button>
+            <button class="screen-key" value="e">e</button>
+            <button class="screen-key" value="r">r</button>
+            <button class="screen-key" value="t">t</button>
+            <button class="screen-key" value="y">y</button>
+            <button class="screen-key" value="u">u</button>
+            <button class="screen-key" value="i">i</button>
+            <button class="screen-key" value="o">o</button>
+            <button class="screen-key" value="p">p</button>
+        </section>
+        <section class="screen-keyboard-row">
+            <button class="screen-key" value="a">a</button>
+            <button class="screen-key" value="s">s</button>
+            <button class="screen-key" value="d">d</button>
+            <button class="screen-key" value="f">f</button>
+            <button class="screen-key" value="g">g</button>
+            <button class="screen-key" value="h">h</button>
+            <button class="screen-key" value="j">j</button>
+            <button class="screen-key" value="k">k</button>
+            <button class="screen-key" value="l">l</button>
+        </section>
+        <section class="screen-keyboard-row">
+            <button class="screen-key" id="enter-btn" value="enter">Enter</button>
+            <button class="screen-key" value="z">z</button>
+            <button class="screen-key" value="x">x</button>
+            <button class="screen-key" value="c">c</button>
+            <button class="screen-key" value="v">v</button>
+            <button class="screen-key" value="b">b</button>
+            <button class="screen-key" value="n">n</button>
+            <button class="screen-key" value="m">m</button>
+            <button class="screen-key" id="backspace-btn" value="backspace">⌫</button>
+        </section>
+    </section>
+
+    <section class="user-messages">
+        <div class="win-message hidden">
+            <p>CONGRATS YOU'VE WON!!! Try a new word in: </p>
+            <p class="time-remaining"></p>
+        </div>
+        <div class="lose-message hidden">
+            <p>SORRY, YOU LOST. Refresh the page to try again, or get a new word in: </p>
+            <p class="time-remaining"></p>
+        </div>
+    </section>
+
+    <footer class="footer-text">
+        <p><small>Created by <a href="#">Brad Jeschonek.</a> View source code on <a href="#">Github.</a></small></p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
