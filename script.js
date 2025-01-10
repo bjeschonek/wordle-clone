@@ -1,199 +1,187 @@
-// Constants and magic numbers
+// Magic Numbers
 const WORD_LENGTH = 5;
-const MAX_GUESSES = 6;
+const MAX_ATTEMPTS = 6;
 
-// Get DOM elements
+// DOM Elements
 const inputBoxes = Array.from(document.querySelectorAll('.inputBox'));
-const screenKeyboardKeys = Array.from(document.querySelectorAll('.screen-key'));
+const screenKeyboard = Array.from(document.querySelectorAll('.screen-key'));
 const gameMessage = document.querySelector('.game-message');
 
 async function runGame() {
-    // Set initial game state
-    let currentRow = 0;
-    let currentGuess = '';
-    let gameOver = false;
+  // Initial game state
+  let currentRow = 0;
+  let currentGuess = '';
+  let gameOver = false;
 
-    // Get word of the day
-    const wordOfTheDay = await requestWordOfTheDay();
-    console.log(wordOfTheDay);
+  // Get and set the word of the day
+  try {
+    const response = await fetch('https://words.dev-apis.com/word-of-the-day');
+    if (!response.ok) {
+        throw new Error(`Response status: ${response.status}`);
+    }
+    const { word } = await response.json();
+    const wordOfTheDay = word.toLowerCase();
+  } catch (error) {
+    console.error(`Error fetching word of day: ${error}`);
+    const wordOfTheDay = 'guess';
+  }
 
-    async function requestWordOfTheDay() {
-        try {
-            const response = await fetch('https://words.dev-apis.com/word-of-the-day');
-            if (!response.ok) {
-                throw new Error(`Response status: ${response.status}`);
-            }
-            const { word } = await response.json();
-            return word;
-        } catch (error) {
-            console.error(error.message);
-            // Returning a default word if unable to get one from API
-            return 'guess';
-        }
+  function handleValidLetter(letter) {
+    if (currentGuess.length < WORD_LENGTH) {
+      currentGuess += letter;
+    } else {
+      current = currentGuess.substring(0, currentGuess.length - 1) + letter;
     }
 
-    // Validates legitimate letter input
-    function isLetter(letter) {
-        return /^[a-zA-z]$/.test(letter);
+    inputBoxes[currentRow * WORD_LENGTH + currentGuess.length - 1].innerText =
+      letter;
+  }
+
+  // use tries to enter a guess
+  async function commit() {
+    if (currentGuess.length !== WORD_LENGTH) {
+      // do nothing
+      return;
     }
 
-    function handleValidLetter(letter) {
-        // Prevent more than 5 letters being typed in
-        if (currentGuess.length < WORD_LENGTH) {
-            currentGuess += letter;
-        } else {
-            currentGuess = currentGuess.substring(0, currentGuess.length - 1) + letter;
-        }
-        inputBoxes[currentRow * WORD_LENGTH + currentGuess.length - 1].innerText = letter;
+    // check the API to see if it's a valid word
+    // skip this step if you're not checking for valid words
+    const res = await fetch("https://words.dev-apis.com/validate-word", {
+      method: "POST",
+      body: JSON.stringify({ word: currentGuess }),
+    });
+    const { validWord } = await res.json();
+
+    // not valid, mark the word as invalid and return
+    if (!validWord) {
+      markInvalidWord();
+      return;
     }
 
-    function backspace() {
-        currentGuess = currentGuess.substring(0, currentGuess.length - 1);
-        inputBoxes[currentRow * WORD_LENGTH + currentGuess.length].innerText = '';
+    const guessParts = currentGuess.split("");
+    const wordParts = wordOfTheDay.split("");
+    const map = makeMap(wordParts);
+    let allRight = true;
+
+    // first pass just finds correct letters so we can mark those as
+    // correct first
+    for (let i = 0; i < WORD_LENGTH; i++) {
+      if (guessParts[i] === wordParts[i]) {
+        // mark as correct
+        inputBoxes[currentRow * WORD_LENGTH + i].classList.add("correct");
+        map[guessParts[i]]--;
+      }
     }
 
-    async function submitGuess() {
-        // Prevent submitting words more or less than 5 letters
-        if (currentGuess.length !== WORD_LENGTH) {
-            return;
-        }
-        
-        const isValid = await isValidWord(currentGuess);
-
-        if (isValid) {
-            compareGuessToAnswer();
-            currentRow++;
-            currentGuess = '';
-        } else {
-            // Mark word submitted as invalid and return so user can enter something else
-            for (let i = 0; i < WORD_LENGTH; i++) {
-                inputBoxes[currentRow * WORD_LENGTH + i].classList.remove('invalid');
-    
-                setTimeout(() => {
-                    inputBoxes[currentRow * WORD_LENGTH + i].classList.add('invalid');
-                }, 10);
-            }
-        }
-
-        console.log(currentGuess, currentRow);
+    // second pass finds close and wrong letters
+    // we use the map to make sure we mark the correct amount of
+    // close letters
+    for (let i = 0; i < WORD_LENGTH; i++) {
+      if (guessParts[i] === wordParts[i]) {
+        // do nothing
+      } else if (map[guessParts[i]] && map[guessParts[i]] > 0) {
+        // mark as close
+        allRight = false;
+        inputBoxes[currentRow * WORD_LENGTH + i].classList.add("close");
+        map[guessParts[i]]--;
+      } else {
+        // wrong
+        allRight = false;
+        inputBoxes[currentRow * WORD_LENGTH + i].classList.add("wrong");
+      }
     }
 
-    async function isValidWord(wordToValidate) {
-        try {
-            const response = await fetch('https://words.dev-apis.com/validate-word', {
-                method: 'POST',
-                body: JSON.stringify({ word: wordToValidate })
-            });
-            if (!response.ok) {
-                throw new Error(`Response status: ${response.status}`);
-            }
-            const { validWord } = await response.json();
-            return validWord;
-        } catch (error) {
-            console.error('Error validating word', error);
-            // return true so game still works without validation API
-            return true;
-        }
+    currentRow++;
+    currentGuess = "";
+    if (allRight) {
+      // win
+      alert("you win");
+      document.querySelector(".brand").classList.add("winner");
+      gameOver = true;
+    } else if (currentRow === MAX_ATTEMPTS) {
+      // lose
+      alert(`you lose, the word was ${word}`);
+      gameOver = true;
+    }
+  }
+
+  // user hits backspace, if the the length of the string is 0 then do
+  // nothing
+  function backspace() {
+    currentGuess = currentGuess.substring(0, currentGuess.length - 1);
+    inputBoxes[currentRow * WORD_LENGTH + currentGuess.length].innerText = "";
+  }
+
+  // let the user know that their guess wasn't a real word
+  // skip this if you're not doing guess validation
+  function markInvalidWord() {
+    for (let i = 0; i < WORD_LENGTH; i++) {
+      inputBoxes[currentRow * WORD_LENGTH + i].classList.remove("invalid");
+
+      // long enough for the browser to repaint without the "invalid class" so we can then add it again
+      setTimeout(
+        () => inputBoxes[currentRow * WORD_LENGTH + i].classList.add("invalid"),
+        10
+      );
+    }
+  }
+
+  // listening for event keys and routing to the right function
+  // we listen on keydown so we can catch Enter and Backspace
+  document.addEventListener("keydown", function handleKeyPress(event) {
+    if (gameOver) {
+      // do nothing;
+      return;
     }
 
-    function compareGuessToAnswer() {
-        // Convert word and guess to array for comparison
-        const userGuessLettersArray = currentGuess.split('');
-        const wordOfDayLettersArray = wordOfTheDay.split('');
+    const action = event.key;
 
-        // Converts word of day to object to keep track of duplicate letters in word ex. POOLS
-        const wordOfDayLetterMap = mapLetters(wordOfDayLettersArray);
-
-        let correctAnswer = true;
-
-        // First loop only marks correct letters
-        for (let i = 0; i < WORD_LENGTH; i++) {
-            if (userGuessLettersArray[i] === wordOfDayLettersArray[i]) {
-                inputBoxes[currentRow * WORD_LENGTH + i].classList.add('correct');
-                wordOfDayLetterMap[userGuessLettersArray[i]]--;
-            }
-        }
-
-        // Second loop takes care of "close" and incorrect letters
-        for (let i = 0; i < WORD_LENGTH; i++) {
-            if (userGuessLettersArray[i] === wordOfDayLettersArray[i]) {
-                return;
-            } else if (wordOfDayLetterMap[userGuessLettersArray[i]] && wordOfDayLetterMap[wordOfDayLettersArray[i]] > 0) {
-                correctAnswer = false;
-                inputBoxes[currentRow * WORD_LENGTH + i].classList.add('close');
-                wordOfDayLetterMap[userGuessLettersArray[i]]--;
-            } else {
-                correctAnswer = false;
-                inputBoxes[currentRow * WORD_LENGTH + i].classList.add('wrong');
-            }
-        }
-
-        if (correctAnswer) {
-            endGame('win');
-        } else if (currentRow === MAX_GUESSES) {
-            endGame('lose');
-        }
-
+    if (action === "Enter") {
+      commit();
+    } else if (action === "Backspace") {
+      backspace();
+    } else if (isLetter(action)) {
+      handleValidLetter(action.toUpperCase());
+    } else {
+      // do nothing
     }
+  });
 
-    function mapLetters(letters) {
-        const wordMap = {};
-
-        for (let i = 0; i < letters.length; i++) {
-            let letter = wordMap[letters[i]];
-
-            if (wordMap[letters[i]]) {
-                wordMap[letters[i]]++;
-            } else {
-                wordMap[letters[i]] = 1;
-            }
-        }
-
-        return wordMap;
-    }
-
-    function endGame(condition) {
-        gameOver = true;
-        gameMessage.classList.remove('hidden');
-
-        if (condition === 'win') {
-            gameMessage.innerText = `Congrats, you've won!! Try a new word tomorrow or refresh the page to play again.`;
-        }
-
-        gameMessage.innerText = `You lose! Try a new word tomorrow or refresh the page to play again.`;
-    }
-
-    // Physical keyboard input functionality
-    document.addEventListener('keydown', (event) => {
+  screenKeyboard.forEach(btn => {
+    btn.addEventListener('click', (event) => {
         if (gameOver) return;
 
-        if (isLetter(event.key)) {
-            handleValidLetter(event.key);
-        } else if (event.key === 'Backspace') {
+        if (event.target.value === 'Enter') {
+            commit();
+        } else if (event.target.value === 'Backspace') {
             backspace();
-        } else if (event.key === 'Enter') {
-            submitGuess();
-        } else {
-            return;
+        } else if (isLetter(event.target.value)) {
+            handleValidLetter();
         }
-    });
+    })
+  })
+}
 
-    // Screen keyboard input functionality
-    screenKeyboardKeys.forEach(btn => {
-        btn.addEventListener('click', (event) => {
-            if (gameOver) return;
-
-            if (isLetter(event.target.value)) {
-                handleValidLetter(event.target.value);
-            } else if (event.target.value === 'backspace') {
-                backspace();
-            } else if (event.target.value === 'enter') {
-                submitGuess();
-            } else {
-                return;
-            }
-        });
-    });
+// a little function to check to see if a character is alphabet letter
+// this uses regex (the /[a-zA-Z]/ part) but don't worry about it
+// you can learn that later and don't need it too frequently
+function isLetter(letter) {
+  return /^[a-zA-Z]$/.test(letter);
+}
+// takes an array of letters (like ['E', 'L', 'I', 'T', 'E']) and creates
+// an object out of it (like {E: 2, L: 1, T: 1}) so we can use that to
+// make sure we get the correct amount of letters marked close instead
+// of just wrong or correct
+function makeMap(array) {
+  const obj = {};
+  for (let i = 0; i < array.length; i++) {
+    if (obj[array[i]]) {
+      obj[array[i]]++;
+    } else {
+      obj[array[i]] = 1;
+    }
+  }
+  return obj;
 }
 
 runGame();
