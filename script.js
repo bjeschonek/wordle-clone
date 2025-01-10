@@ -5,9 +5,7 @@ const MAX_GUESSES_ALLOWED = 6;
 // Get DOM elements
 const inputBoxes = Array.from(document.querySelectorAll('.inputBox'));
 const screenKeyboardKeys = Array.from(document.querySelectorAll('.screen-key'));
-const winMessage = document.querySelector('.win-message');
-const loseMessage = document.querySelector('.lose-message');
-const timeRemaining = document.querySelector('.time-remaining');
+const gameMessage = document.querySelector('.game-message');
 
 async function runGame() {
     // Set initial game state
@@ -18,38 +16,6 @@ async function runGame() {
 
     // Get word of the day
     const wordOfTheDay = await requestWordOfTheDay();
-
-    // Physical keyboard input functionality
-    document.addEventListener('keydown', (event) => {
-        if (gameOver) return;
-
-        if (isLetter(event.key)) {
-            handleValidLetter(event.key);
-        } else if (event.key === 'Backspace') {
-            backspace();
-        } else if (event.key === 'Enter') {
-            submitGuess();
-        } else {
-            return;
-        }
-    });
-
-    // Screen keyboard input functionality
-    keyboardKeys.forEach(btn => {
-        btn.addEventListener('click', (event) => {
-            if (gameOver) return;
-
-            if (isLetter(event.target.value)) {
-                handleValidLetter(event.target.value);
-            } else if (event.target.value === 'backspace') {
-                backspace();
-            } else if (event.target.value === 'enter') {
-                submitGuess();
-            } else {
-                return;
-            }
-        });
-    });
 
     async function requestWordOfTheDay() {
         try {
@@ -75,8 +41,9 @@ async function runGame() {
         // Prevent more than 5 letters being typed in
         if (currentGuess.length < MAX_GUESS_LENGTH) {
             currentGuess += letter;
+        } else {
+            currentGuess = currentGuess.substring(0, currentGuess.length - 1) + letter;
         }
-        // TODO make sure this doesn't cause bug due to updating innerText outside of currentGuess
         inputBoxes[BOX_COORDS + currentGuess.length - 1].innerText = letter;
     }
 
@@ -189,25 +156,47 @@ async function runGame() {
 
     function winGame() {
         gameOver = true;
-        winMessage.classList.remove('hidden');
-        displayTimeRemaining();
+        gameMessage.classList.remove('hidden');
+        gameMessage.innerText = `Congrats, you've won!! Try a new word tomorrow or refresh the page to play again.`;
     }
 
     function loseGame() {
         gameOver = true;
-        loseMessage.classList.remove('hidden');
-        displayTimeRemaining();
+        gameMessage.classList.remove('hidden');
+        gameMessage.innerText = `You lose! Try a new word tomorrow or refresh the page to play again.`
     }
 
-    function displayTimeRemaining() {
-        const now = new Date();
-        const midnight = new Date();
-        midnight.setHours(24,0,0,0);
+    // Physical keyboard input functionality
+    document.addEventListener('keydown', (event) => {
+        if (gameOver) return;
 
-        const timeUntilMidnight = midnight - now;
+        if (isLetter(event.key)) {
+            handleValidLetter(event.key);
+        } else if (event.key === 'Backspace') {
+            backspace();
+        } else if (event.key === 'Enter') {
+            submitGuess();
+        } else {
+            return;
+        }
+    });
 
-        const hours = Math.floor
-    }
+    // Screen keyboard input functionality
+    screenKeyboardKeys.forEach(btn => {
+        btn.addEventListener('click', (event) => {
+            if (gameOver) return;
+
+            if (isLetter(event.target.value)) {
+                handleValidLetter(event.target.value);
+            } else if (event.target.value === 'backspace') {
+                backspace();
+            } else if (event.target.value === 'enter') {
+                submitGuess();
+            } else {
+                return;
+            }
+        });
+    });
 }
 
 runGame();
