@@ -1,6 +1,6 @@
 // Constants and magic numbers
-const MAX_GUESS_LENGTH = 5;
-const MAX_GUESSES_ALLOWED = 6;
+const WORD_LENGTH = 5;
+const MAX_GUESSES = 6;
 
 // Get DOM elements
 const inputBoxes = Array.from(document.querySelectorAll('.inputBox'));
@@ -12,10 +12,10 @@ async function runGame() {
     let currentRow = 0;
     let currentGuess = '';
     let gameOver = false;
-    let BOX_COORDS = currentRow * MAX_GUESS_LENGTH;
 
     // Get word of the day
     const wordOfTheDay = await requestWordOfTheDay();
+    console.log(wordOfTheDay);
 
     async function requestWordOfTheDay() {
         try {
@@ -39,35 +39,43 @@ async function runGame() {
 
     function handleValidLetter(letter) {
         // Prevent more than 5 letters being typed in
-        if (currentGuess.length < MAX_GUESS_LENGTH) {
+        if (currentGuess.length < WORD_LENGTH) {
             currentGuess += letter;
         } else {
             currentGuess = currentGuess.substring(0, currentGuess.length - 1) + letter;
         }
-        inputBoxes[BOX_COORDS + currentGuess.length - 1].innerText = letter;
+        inputBoxes[currentRow * WORD_LENGTH + currentGuess.length - 1].innerText = letter;
     }
 
     function backspace() {
         currentGuess = currentGuess.substring(0, currentGuess.length - 1);
-        inputBoxes[BOX_COORDS + currentGuess.length].innerText = '';
+        inputBoxes[currentRow * WORD_LENGTH + currentGuess.length].innerText = '';
     }
 
     async function submitGuess() {
         // Prevent submitting words more or less than 5 letters
-        if (currentGuess.length !== MAX_GUESS_LENGTH) {
+        if (currentGuess.length !== WORD_LENGTH) {
             return;
         }
+        
+        const isValid = await isValidWord(currentGuess);
 
-        // TODO check if this function needs await - may allow double enter to submit invalid/blank words
-        if (!isValidWord(currentGuess)) {
-            markInvalidWord();
-            return;
+        if (isValid) {
+            compareGuessToAnswer();
+            currentRow++;
+            currentGuess = '';
+        } else {
+            // Mark word submitted as invalid and return so user can enter something else
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                inputBoxes[currentRow * WORD_LENGTH + i].classList.remove('invalid');
+    
+                setTimeout(() => {
+                    inputBoxes[currentRow * WORD_LENGTH + i].classList.add('invalid');
+                }, 10);
+            }
         }
 
-        compareGuessToAnswer();
-
-        currentRow++;
-        currentGuess = '';
+        console.log(currentGuess, currentRow);
     }
 
     async function isValidWord(wordToValidate) {
@@ -88,16 +96,6 @@ async function runGame() {
         }
     }
 
-    function markInvalidWord() {
-        for (let i = 0; i < MAX_GUESS_LENGTH; i++) {
-            inputBoxes[BOX_COORDS + i].classList.remove('invalid');
-
-            setTimeout(() => {
-                inputBoxes[BOX_COORDS + i].classList.add('invalid');
-            }, 10);
-        }
-    }
-
     function compareGuessToAnswer() {
         // Convert word and guess to array for comparison
         const userGuessLettersArray = currentGuess.split('');
@@ -109,31 +107,31 @@ async function runGame() {
         let correctAnswer = true;
 
         // First loop only marks correct letters
-        for (let i = 0; i < MAX_GUESS_LENGTH; i++) {
+        for (let i = 0; i < WORD_LENGTH; i++) {
             if (userGuessLettersArray[i] === wordOfDayLettersArray[i]) {
-                inputBoxes[BOX_COORDS + 1].classList.add('correct');
+                inputBoxes[currentRow * WORD_LENGTH + i].classList.add('correct');
                 wordOfDayLetterMap[userGuessLettersArray[i]]--;
             }
         }
 
         // Second loop takes care of "close" and incorrect letters
-        for (let i = 0; i < MAX_GUESS_LENGTH; i++) {
+        for (let i = 0; i < WORD_LENGTH; i++) {
             if (userGuessLettersArray[i] === wordOfDayLettersArray[i]) {
                 return;
             } else if (wordOfDayLetterMap[userGuessLettersArray[i]] && wordOfDayLetterMap[wordOfDayLettersArray[i]] > 0) {
-                inputBoxes[BOX_COORDS + i].classList.add('close');
                 correctAnswer = false;
+                inputBoxes[currentRow * WORD_LENGTH + i].classList.add('close');
                 wordOfDayLetterMap[userGuessLettersArray[i]]--;
             } else {
-                inputBoxes[BOX_COORDS + i].classList.add('wrong');
                 correctAnswer = false;
+                inputBoxes[currentRow * WORD_LENGTH + i].classList.add('wrong');
             }
         }
 
         if (correctAnswer) {
-            winGame();
-        } else if (currentRow === MAX_GUESSES_ALLOWED) {
-            loseGame();
+            endGame('win');
+        } else if (currentRow === MAX_GUESSES) {
+            endGame('lose');
         }
 
     }
@@ -144,26 +142,25 @@ async function runGame() {
         for (let i = 0; i < letters.length; i++) {
             let letter = wordMap[letters[i]];
 
-            if (letter) {
-                letter++;
+            if (wordMap[letters[i]]) {
+                wordMap[letters[i]]++;
             } else {
-                letter = 1;
+                wordMap[letters[i]] = 1;
             }
         }
 
         return wordMap;
     }
 
-    function winGame() {
+    function endGame(condition) {
         gameOver = true;
         gameMessage.classList.remove('hidden');
-        gameMessage.innerText = `Congrats, you've won!! Try a new word tomorrow or refresh the page to play again.`;
-    }
 
-    function loseGame() {
-        gameOver = true;
-        gameMessage.classList.remove('hidden');
-        gameMessage.innerText = `You lose! Try a new word tomorrow or refresh the page to play again.`
+        if (condition === 'win') {
+            gameMessage.innerText = `Congrats, you've won!! Try a new word tomorrow or refresh the page to play again.`;
+        }
+
+        gameMessage.innerText = `You lose! Try a new word tomorrow or refresh the page to play again.`;
     }
 
     // Physical keyboard input functionality
