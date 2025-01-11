@@ -14,7 +14,6 @@ async function runGame() {
   let gameOver = false;
 
   const wordOfTheDay = await getWordOfTheDay();
-  console.log(wordOfTheDay);
 
   async function getWordOfTheDay() {
     try {
@@ -35,13 +34,14 @@ async function runGame() {
     if (currentGuess.length < WORD_LENGTH) {
       currentGuess += letter;
       inputBoxes[currentRow * WORD_LENGTH + currentGuess.length - 1].innerText = letter;
-      console.log(currentGuess);
+      inputBoxes[currentRow * WORD_LENGTH + currentGuess.length -1].classList.add('letter');
     }
   }
 
   function backspace() {
     currentGuess = currentGuess.substring(0, currentGuess.length - 1);
     inputBoxes[currentRow * WORD_LENGTH + currentGuess.length].innerText = '';
+    inputBoxes[currentRow * WORD_LENGTH + currentGuess.length].classList.remove('letter');
   }
 
   async function submitGuess() {

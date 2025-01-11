@@ -79,6 +79,10 @@ body {
 }
 
 /* Gameplay Styles */
+.letter {
+    border: 2px solid black;
+}
+
 .correct {
     background-color: darkgreen;
     color: white;
@@ -111,6 +115,8 @@ body {
 /* User Message */
 .game-message {
     text-align: center;
+    margin: 20px;
+    font-weight: bold;
 }
 
 .hidden {
