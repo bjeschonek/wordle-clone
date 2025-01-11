@@ -2,59 +2,57 @@
 const WORD_LENGTH = 5;
 const MAX_ATTEMPTS = 6;
 
-// DOM Elements
+// Get DOM Elements
 const inputBoxes = Array.from(document.querySelectorAll('.inputBox'));
 const screenKeyboard = Array.from(document.querySelectorAll('.screen-key'));
 const gameMessage = document.querySelector('.game-message');
 
 async function runGame() {
-  // Initial game state
+  // Set initial game state
   let currentRow = 0;
   let currentGuess = '';
   let gameOver = false;
 
-  // Get and set the word of the day
-  try {
-    const response = await fetch('https://words.dev-apis.com/word-of-the-day');
-    if (!response.ok) {
-        throw new Error(`Response status: ${response.status}`);
+  const wordOfTheDay = await getWordOfTheDay();
+  console.log(wordOfTheDay);
+
+  async function getWordOfTheDay() {
+    try {
+      const response = await fetch('https://words.dev-apis.com/word-of-the-day');
+      if (!response.ok) {
+          throw new Error(`Response status: ${response.status}`);
+      }
+      const { word } = await response.json();
+      return word;
+    } catch (error) {
+      console.error(`Error fetching word of day: ${error}`);
+      // In case of error, return default word
+      return 'guess';
     }
-    const { word } = await response.json();
-    const wordOfTheDay = word.toLowerCase();
-  } catch (error) {
-    console.error(`Error fetching word of day: ${error}`);
-    const wordOfTheDay = 'guess';
   }
 
   function handleValidLetter(letter) {
     if (currentGuess.length < WORD_LENGTH) {
       currentGuess += letter;
-    } else {
-      current = currentGuess.substring(0, currentGuess.length - 1) + letter;
+      inputBoxes[currentRow * WORD_LENGTH + currentGuess.length - 1].innerText = letter;
+      console.log(currentGuess);
     }
-
-    inputBoxes[currentRow * WORD_LENGTH + currentGuess.length - 1].innerText =
-      letter;
   }
 
-  // use tries to enter a guess
-  async function commit() {
-    if (currentGuess.length !== WORD_LENGTH) {
-      // do nothing
-      return;
-    }
+  function backspace() {
+    currentGuess = currentGuess.substring(0, currentGuess.length - 1);
+    inputBoxes[currentRow * WORD_LENGTH + currentGuess.length].innerText = '';
+  }
 
-    // check the API to see if it's a valid word
-    // skip this step if you're not checking for valid words
-    const res = await fetch("https://words.dev-apis.com/validate-word", {
-      method: "POST",
-      body: JSON.stringify({ word: currentGuess }),
-    });
-    const { validWord } = await res.json();
+  async function submitGuess() {
+    // Prevents submission of words not equal to 5 characters
+    if (currentGuess.length !== WORD_LENGTH) return;
 
-    // not valid, mark the word as invalid and return
-    if (!validWord) {
+    const wordIsValid = await isValidWord(currentGuess);
+
+    if (!wordIsValid) {
       markInvalidWord();
+      // Returns to prevent invalid words counting as a guess
       return;
     }
 
@@ -105,24 +103,33 @@ async function runGame() {
     }
   }
 
-  // user hits backspace, if the the length of the string is 0 then do
-  // nothing
-  function backspace() {
-    currentGuess = currentGuess.substring(0, currentGuess.length - 1);
-    inputBoxes[currentRow * WORD_LENGTH + currentGuess.length].innerText = "";
+  async function isValidWord(word) {
+    try {
+      const response = await fetch('https://words.dev-apis.com/validate-word', {
+        method: 'POST',
+        body: JSON.stringify({ word: currentGuess })
+      });
+      if (!response.ok) {
+        throw new Error(`Response status: ${response.status}`);
+      }
+
+      const { validWord } = await response.json();
+      return validWord;
+    } catch (error) {
+      console.error('Error validating word', error);
+      // In case validation API down, returns true so game still works
+      return true;
+    }
   }
 
-  // let the user know that their guess wasn't a real word
-  // skip this if you're not doing guess validation
   function markInvalidWord() {
+    // Clears invalid class first, then adds it
     for (let i = 0; i < WORD_LENGTH; i++) {
-      inputBoxes[currentRow * WORD_LENGTH + i].classList.remove("invalid");
+      inputBoxes[currentRow * WORD_LENGTH + i].classList.remove('invalid');
 
-      // long enough for the browser to repaint without the "invalid class" so we can then add it again
-      setTimeout(
-        () => inputBoxes[currentRow * WORD_LENGTH + i].classList.add("invalid"),
-        10
-      );
+      setTimeout(() => {
+        inputBoxes[currentRow * WORD_LENGTH + i].classList.add('invalid');
+      }, 10);
     }
   }
 
@@ -137,7 +144,7 @@ async function runGame() {
     const action = event.key;
 
     if (action === "Enter") {
-      commit();
+      submitGuess();
     } else if (action === "Backspace") {
       backspace();
     } else if (isLetter(action)) {
@@ -152,7 +159,7 @@ async function runGame() {
         if (gameOver) return;
 
         if (event.target.value === 'Enter') {
-            commit();
+            submitGuess();
         } else if (event.target.value === 'Backspace') {
             backspace();
         } else if (isLetter(event.target.value)) {
