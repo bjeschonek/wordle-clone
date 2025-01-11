@@ -51,55 +51,73 @@ async function runGame() {
     const wordIsValid = await isValidWord(currentGuess);
 
     if (!wordIsValid) {
-      markInvalidWord();
+      // Clear invalid class, then add it back
+      for (let i = 0; i < WORD_LENGTH; i++) {
+        inputBoxes[currentRow * WORD_LENGTH + i].classList.remove('invalid');
+  
+        setTimeout(() => {
+          inputBoxes[currentRow * WORD_LENGTH + i].classList.add('invalid');
+        }, 10);
+      }
       // Returns to prevent invalid words counting as a guess
       return;
     }
 
-    const guessParts = currentGuess.split("");
-    const wordParts = wordOfTheDay.split("");
-    const map = makeMap(wordParts);
-    let allRight = true;
+    console.log('guess submitted and valid');
 
-    // first pass just finds correct letters so we can mark those as
-    // correct first
-    for (let i = 0; i < WORD_LENGTH; i++) {
-      if (guessParts[i] === wordParts[i]) {
-        // mark as correct
-        inputBoxes[currentRow * WORD_LENGTH + i].classList.add("correct");
-        map[guessParts[i]]--;
-      }
-    }
+    // Split word of day and user guess into arrays for comparison
+    const guessLetters = currentGuess.split('');
+    const wordLetters = wordOfTheDay.split('');
 
-    // second pass finds close and wrong letters
-    // we use the map to make sure we mark the correct amount of
-    // close letters
-    for (let i = 0; i < WORD_LENGTH; i++) {
-      if (guessParts[i] === wordParts[i]) {
-        // do nothing
-      } else if (map[guessParts[i]] && map[guessParts[i]] > 0) {
-        // mark as close
-        allRight = false;
-        inputBoxes[currentRow * WORD_LENGTH + i].classList.add("close");
-        map[guessParts[i]]--;
+    // Maps word letters to object to handle multiple of same letter ex. POOLS
+    const wordMap = {};
+    for (let i = 0; i < wordLetters.length; i++) {
+      if (wordMap[wordLetters[i]]) {
+        wordMap[wordLetters[i]]++;
       } else {
-        // wrong
-        allRight = false;
-        inputBoxes[currentRow * WORD_LENGTH + i].classList.add("wrong");
+        wordMap[wordLetters[i]] = 1;
       }
     }
 
+    let correctAnswer = true;
+
+    // First loop to mark correct letters
+    for (let i = 0; i < WORD_LENGTH; i++) {
+      if (guessLetters[i] === wordLetters[i]) {
+        inputBoxes[currentRow * WORD_LENGTH + i].classList.add('correct');
+        // Updates word map removing letters in correct position
+        wordMap[guessLetters[i]]--;
+      }
+    }
+
+    // Second loop marks correct letters in wrong place (close) and wrong letters
+    for (let i = 0; i < WORD_LENGTH; i++) {
+      if (guessLetters[i] === wordLetters[i]) {
+        continue;
+      } else if (wordMap[guessLetters[i]] && wordMap[guessLetters[i]] > 0) { // TODO possible bug?
+        // Mark as "close"
+        correctAnswer = false;
+        inputBoxes[currentRow * WORD_LENGTH + i].classList.add('close');
+        // Update word map to remove letters
+        wordMap[guessLetters[i]]--;
+      } else {
+        // Mark as wrong
+        correctAnswer = false;
+        inputBoxes[currentRow * WORD_LENGTH + i].classList.add('wrong');
+      }
+    }
+
+    // Increment row to count guess, reset currentGuess for new row
     currentRow++;
-    currentGuess = "";
-    if (allRight) {
-      // win
-      alert("you win");
-      document.querySelector(".brand").classList.add("winner");
-      gameOver = true;
+    currentGuess = '';
+
+    // End game functionality
+    if (correctAnswer) {
+      endGame();
+      gameMessage.innerText = `Congrats, you've won!! Try a new word tomorrow.`;
     } else if (currentRow === MAX_ATTEMPTS) {
-      // lose
-      alert(`you lose, the word was ${word}`);
-      gameOver = true;
+      endGame();
+      gameMessage.innerText = `Sorry, you lost. Try a new word tomorrow, or refresh to play again.`
     }
   }
 
@@ -122,73 +140,43 @@ async function runGame() {
     }
   }
 
-  function markInvalidWord() {
-    // Clears invalid class first, then adds it
-    for (let i = 0; i < WORD_LENGTH; i++) {
-      inputBoxes[currentRow * WORD_LENGTH + i].classList.remove('invalid');
-
-      setTimeout(() => {
-        inputBoxes[currentRow * WORD_LENGTH + i].classList.add('invalid');
-      }, 10);
-    }
+  function endGame() {
+    gameMessage.classList.remove('hidden');
+    gameOver = true;
   }
 
-  // listening for event keys and routing to the right function
-  // we listen on keydown so we can catch Enter and Backspace
-  document.addEventListener("keydown", function handleKeyPress(event) {
+  // Physical keyboard event listener
+  document.addEventListener('keydown', (event) => {
     if (gameOver) {
-      // do nothing;
       return;
-    }
-
-    const action = event.key;
-
-    if (action === "Enter") {
+    } else if (event.key === 'Enter') {
       submitGuess();
-    } else if (action === "Backspace") {
+    } else if (event.key === 'Backspace') {
       backspace();
-    } else if (isLetter(action)) {
-      handleValidLetter(action.toUpperCase());
-    } else {
-      // do nothing
+    } else if (isLetter(event.key)) {
+      handleValidLetter(event.key);
     }
   });
 
+  // Screen keyboard event listener
   screenKeyboard.forEach(btn => {
     btn.addEventListener('click', (event) => {
-        if (gameOver) return;
+      const key = event.target.value;
+      if (gameOver) {
+        return;
+      } else if (key === 'enter') {
+        submitGuess();
+      } else if (key === 'backspace') {
+        backspace();
+      } else if (isLetter(key)) {
+        handleValidLetter(key);
+      }
+    });
+  });
 
-        if (event.target.value === 'Enter') {
-            submitGuess();
-        } else if (event.target.value === 'Backspace') {
-            backspace();
-        } else if (isLetter(event.target.value)) {
-            handleValidLetter();
-        }
-    })
-  })
-}
-
-// a little function to check to see if a character is alphabet letter
-// this uses regex (the /[a-zA-Z]/ part) but don't worry about it
-// you can learn that later and don't need it too frequently
-function isLetter(letter) {
-  return /^[a-zA-Z]$/.test(letter);
-}
-// takes an array of letters (like ['E', 'L', 'I', 'T', 'E']) and creates
-// an object out of it (like {E: 2, L: 1, T: 1}) so we can use that to
-// make sure we get the correct amount of letters marked close instead
-// of just wrong or correct
-function makeMap(array) {
-  const obj = {};
-  for (let i = 0; i < array.length; i++) {
-    if (obj[array[i]]) {
-      obj[array[i]]++;
-    } else {
-      obj[array[i]] = 1;
-    }
+  function isLetter(letter) {
+    return /^[a-zA-Z]$/.test(letter);
   }
-  return obj;
 }
 
 runGame();
