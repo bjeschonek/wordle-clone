@@ -63,8 +63,6 @@ async function runGame() {
       return;
     }
 
-    console.log('guess submitted and valid');
-
     // Split word of day and user guess into arrays for comparison
     const guessLetters = currentGuess.split('');
     const wordLetters = wordOfTheDay.split('');
